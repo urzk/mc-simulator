@@ -14,8 +14,11 @@ const dotGothic = DotGothic16({
 });
 
 export const metadata: Metadata = {
-  title: "Minecraft 経験値計算機",
-  description: "現在のレベルとバーの進捗から、目標レベルまでに必要な経験値を計算します。",
+  title: {
+    default: "Minecraft シミュレーター",
+    template: "%s | Minecraft シミュレーター",
+  },
+  description: "Minecraft の各種計算ツール集",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
