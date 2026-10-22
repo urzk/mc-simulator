@@ -101,7 +101,7 @@ function XpBar({ level, percent }: { level: number; percent: number }) {
 }
 
 export default function XpCalculator() {
-  const [current, setCurrent] = useState<LevelState>({ level: 7, percent: 20 });
+  const [current, setCurrent] = useState<LevelState>({ level: 0, percent: 0 });
   const [target, setTarget] = useState<LevelState>({ level: 30, percent: 0 });
 
   const currentXp = totalXp(current.level, current.percent / 100);
