@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import {
   levelFromTotalXp,
   totalXp,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/xp";
 
 const MAX_LEVEL = 21863; // これ以上は累計経験値が int の上限を超える
+const MAX_TRADES = 100000;
 const BOTTLE_AVG_XP = 7; // エンチャントの瓶 1 本あたりの平均 (3〜11)
 
 function clamp(value: number, min: number, max: number) {
@@ -20,6 +21,49 @@ function clamp(value: number, min: number, max: number) {
 
 function fmt(n: number) {
   return n.toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+}
+
+/** 「12*6」のような積の式を評価する。不完全な項 (「12*」の末尾など) は無視する */
+function evalProduct(text: string) {
+  const factors = text
+    .split(/[*×xX]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map(Number);
+  return factors.length === 0 ? 0 : factors.reduce((a, b) => a * b, 1);
+}
+
+/**
+ * 入力中の文字列をそのまま保持する数値入力欄。
+ * 空欄は 0 として扱い、外から value が変わったときだけ表示を書き換える。
+ */
+function NumberInput({
+  value,
+  onChange,
+  parse,
+  ...props
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  parse: (text: string) => number;
+} & Omit<ComponentProps<"input">, "value" | "onChange">) {
+  const [text, setText] = useState(String(value));
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (parse(text) !== value) setText(String(value));
+  }
+
+  return (
+    <input
+      {...props}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(parse(e.target.value));
+      }}
+    />
+  );
 }
 
 type LevelState = { level: number; percent: number };
@@ -41,15 +85,14 @@ function LevelInput({
       <legend className="px-1 font-pixel text-sm text-lime-300">{label}</legend>
       <label className="flex items-center gap-3">
         <span className="w-16 shrink-0 text-sm text-zinc-400">レベル</span>
-        <input
+        <NumberInput
           type="number"
           inputMode="numeric"
           min={0}
           max={MAX_LEVEL}
           value={value.level}
-          onChange={(e) =>
-            onChange({ ...value, level: clamp(Math.floor(e.target.valueAsNumber), 0, MAX_LEVEL) })
-          }
+          parse={(t) => clamp(Math.floor(Number(t)), 0, MAX_LEVEL)}
+          onChange={(level) => onChange({ ...value, level })}
           className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-lg tabular-nums outline-none focus:border-lime-400"
         />
       </label>
@@ -64,14 +107,15 @@ function LevelInput({
           className="w-full min-w-0 accent-lime-400"
         />
         <span className="relative shrink-0">
-          <input
+          <NumberInput
             type="number"
             inputMode="decimal"
             min={0}
             max={99.9}
             step="any"
             value={value.percent}
-            onChange={(e) => onChange({ ...value, percent: clamp(e.target.valueAsNumber, 0, 99.9) })}
+            parse={(t) => clamp(Number(t), 0, 99.9)}
+            onChange={(percent) => onChange({ ...value, percent })}
             className="w-20 rounded-md border border-white/15 bg-zinc-900 py-2 pl-3 pr-6 text-right tabular-nums outline-none focus:border-lime-400"
           />
           <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
@@ -165,7 +209,7 @@ export default function XpCalculator() {
           <>
             <p className="text-sm text-zinc-300">目標にはすでに到達しています</p>
             <p className="mt-1 font-pixel text-3xl text-zinc-300 tabular-nums">
-              余剰 {fmt(-diff)} ポイント
+              余剰 {fmt(Math.max(0, -diff))} ポイント
             </p>
           </>
         )}
@@ -209,25 +253,26 @@ function TradeSimulator({ current }: { current: LevelState }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex items-center gap-3">
           <span className="w-28 shrink-0 text-sm text-zinc-400">取引回数</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={100000}
+          <NumberInput
+            type="text"
+            placeholder="例: 12*6"
             value={trades}
-            onChange={(e) => setTrades(clamp(Math.floor(e.target.valueAsNumber), 0, 100000))}
+            parse={(t) => clamp(Math.floor(evalProduct(t)), 0, MAX_TRADES)}
+            onChange={setTrades}
             className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-lg tabular-nums outline-none focus:border-lime-400"
           />
+          <span className="shrink-0 text-sm text-zinc-400 tabular-nums">= {trades.toLocaleString("ja-JP")} 回</span>
         </label>
         <label className="flex items-center gap-3">
           <span className="w-28 shrink-0 text-sm text-zinc-400">うち村人が<br />レベルアップ</span>
-          <input
+          <NumberInput
             type="number"
             inputMode="numeric"
             min={0}
             max={trades}
             value={effectiveLevelUps}
-            onChange={(e) => setLevelUps(clamp(Math.floor(e.target.valueAsNumber), 0, trades))}
+            parse={(t) => clamp(Math.floor(Number(t)), 0, trades)}
+            onChange={setLevelUps}
             className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-lg tabular-nums outline-none focus:border-lime-400"
           />
         </label>
