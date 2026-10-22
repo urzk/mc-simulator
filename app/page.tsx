@@ -6,6 +6,11 @@ const tools = [
     title: "経験値計算機",
     description: "目標レベルまでに必要な経験値や、村人との取引で上がるレベルを計算します。",
   },
+  {
+    href: "/enchant-simulator",
+    title: "エンチャントシミュレーター",
+    description: "エンチャントテーブルで付与されうるエンチャントの組み合わせを出現確率ごとに一覧表示します。",
+  },
 ];
 
 export default function Home() {
