@@ -190,12 +190,12 @@ function TradeSimulator({ current }: { current: LevelState }) {
   const { mean, sd } = tradeXpStats(trades, effectiveLevelUps);
 
   const rows = [
+    { label: "−2σ", gained: mean - 2 * sd },
     { label: "−1σ", gained: mean - sd },
     { label: "期待値", gained: mean, highlight: true },
     { label: "+1σ", gained: mean + sd },
+    { label: "+2σ", gained: mean + 2 * sd },
   ];
-  const low2 = formatLevel(startXp + mean - 2 * sd);
-  const high2 = formatLevel(startXp + mean + 2 * sd);
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-white/10 bg-black/30 p-5">
@@ -254,10 +254,8 @@ function TradeSimulator({ current }: { current: LevelState }) {
                   <td className="py-2 whitespace-nowrap">{r.label}</td>
                   <td className="py-2 text-right whitespace-nowrap">{fmt(r.gained)}</td>
                   <td className="py-2 pl-4 whitespace-nowrap">{result.label}</td>
-                  <td className="py-2 pl-4">
-                    <div className="h-2 min-w-16 overflow-hidden rounded-sm border border-black bg-zinc-800">
-                      <div className="h-full bg-[#80ff20]" style={{ width: `${result.percent}%` }} />
-                    </div>
+                  <td className="min-w-20 py-2 pl-4">
+                    <XpBar level={result.level} percent={result.percent} />
                   </td>
                 </tr>
               );
@@ -271,7 +269,7 @@ function TradeSimulator({ current }: { current: LevelState }) {
         {sd > 0 && (
           <>
             {" "}
-            ／ 約95%（±2σ）の範囲: {low2.label} 〜 {high2.label}
+            ／ ±1σ に約68%、±2σ に約95% が収まります
           </>
         )}
       </p>
