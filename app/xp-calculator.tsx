@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { totalXp, totalXpForLevel, xpToNextLevel } from "@/lib/xp";
+import {
+  levelFromTotalXp,
+  totalXp,
+  totalXpForLevel,
+  tradeXpStats,
+  VILLAGER_LEVEL_UP_BONUS_XP,
+  xpToNextLevel,
+} from "@/lib/xp";
 
 const MAX_LEVEL = 21863; // これ以上は累計経験値が int の上限を超える
 const BOTTLE_AVG_XP = 7; // エンチャントの瓶 1 本あたりの平均 (3〜11)
@@ -163,7 +170,121 @@ export default function XpCalculator() {
           </>
         )}
       </section>
+
+      <TradeSimulator current={current} />
     </div>
+  );
+}
+
+function formatLevel(xp: number) {
+  const { level, progress } = levelFromTotalXp(xp);
+  return { level, percent: progress * 100, label: `Lv${level}（${fmt(progress * 100)}%）` };
+}
+
+function TradeSimulator({ current }: { current: LevelState }) {
+  const [trades, setTrades] = useState(10);
+  const [levelUps, setLevelUps] = useState(0);
+
+  const startXp = totalXp(current.level, current.percent / 100);
+  const effectiveLevelUps = Math.min(levelUps, trades);
+  const { mean, sd } = tradeXpStats(trades, effectiveLevelUps);
+
+  const rows = [
+    { label: "−1σ", gained: mean - sd },
+    { label: "期待値", gained: mean, highlight: true },
+    { label: "+1σ", gained: mean + sd },
+  ];
+  const low2 = formatLevel(startXp + mean - 2 * sd);
+  const high2 = formatLevel(startXp + mean + 2 * sd);
+
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-white/10 bg-black/30 p-5">
+      <header className="flex flex-col gap-1">
+        <h2 className="font-pixel text-xl text-lime-300">村人との取引シミュレーター</h2>
+        <p className="text-sm text-zinc-400">
+          上の「現在」の状態から、取引を繰り返したときにどこまでレベルが上がるかを期待値と標準偏差（σ）で示します。
+        </p>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-3">
+          <span className="w-28 shrink-0 text-sm text-zinc-400">取引回数</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={100000}
+            value={trades}
+            onChange={(e) => setTrades(clamp(Math.floor(e.target.valueAsNumber), 0, 100000))}
+            className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-lg tabular-nums outline-none focus:border-lime-400"
+          />
+        </label>
+        <label className="flex items-center gap-3">
+          <span className="w-28 shrink-0 text-sm text-zinc-400">うち村人が<br />レベルアップ</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={trades}
+            value={effectiveLevelUps}
+            onChange={(e) => setLevelUps(clamp(Math.floor(e.target.valueAsNumber), 0, trades))}
+            className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-lg tabular-nums outline-none focus:border-lime-400"
+          />
+        </label>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-zinc-500">
+            <tr>
+              <th className="py-1 text-left font-normal"></th>
+              <th className="py-1 text-right font-normal whitespace-nowrap">獲得経験値</th>
+              <th className="py-1 pl-4 text-left font-normal">到達レベル</th>
+              <th className="w-1/3 py-1 font-normal"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(sd > 0 ? rows : rows.filter((r) => r.highlight)).map((r) => {
+              const result = formatLevel(startXp + r.gained);
+              return (
+                <tr
+                  key={r.label}
+                  className={`border-t border-white/5 ${r.highlight ? "text-[#80ff20]" : "text-zinc-300"}`}
+                >
+                  <td className="py-2 whitespace-nowrap">{r.label}</td>
+                  <td className="py-2 text-right whitespace-nowrap">{fmt(r.gained)}</td>
+                  <td className="py-2 pl-4 whitespace-nowrap">{result.label}</td>
+                  <td className="py-2 pl-4">
+                    <div className="h-2 min-w-16 overflow-hidden rounded-sm border border-black bg-zinc-800">
+                      <div className="h-full bg-[#80ff20]" style={{ width: `${result.percent}%` }} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-sm text-zinc-300">
+        獲得経験値: {fmt(mean)} ± {fmt(sd)}
+        {sd > 0 && (
+          <>
+            {" "}
+            ／ 約95%（±2σ）の範囲: {low2.label} 〜 {high2.label}
+          </>
+        )}
+      </p>
+
+      <ul className="list-disc pl-5 text-xs leading-relaxed text-zinc-500">
+        <li>
+          取引 1 回あたり 3〜6（各 1/4 の確率）、村人のレベルが上がった取引では +{VILLAGER_LEVEL_UP_BONUS_XP}
+          として計算しています。
+        </li>
+        <li>σ 範囲は取引回数が多いほど正確になる正規近似です。</li>
+        <li>修繕の付いた装備を身につけていると、経験値オーブが耐久値の回復に使われます。</li>
+      </ul>
+    </section>
   );
 }
 
