@@ -10,9 +10,11 @@ import {
   VILLAGER_LEVEL_UP_BONUS_XP,
   xpToNextLevel,
 } from "@/lib/xp";
+import { SMELTING_GROUPS, smeltingXp } from "@/lib/smelting";
 
 const MAX_LEVEL = 21863; // これ以上は累計経験値が int の上限を超える
 const MAX_TRADES = 100000;
+const MAX_SMELTS = 1000000;
 const BOTTLE_AVG_XP = 7; // エンチャントの瓶 1 本あたりの平均 (3〜11)
 
 function clamp(value: number, min: number, max: number) {
@@ -184,6 +186,7 @@ export default function XpCalculator() {
       </section>
 
       <TradeSimulator current={current} />
+      <FurnaceCalculator current={current} />
     </div>
   );
 }
@@ -293,6 +296,110 @@ function TradeSimulator({ current }: { current: LevelState }) {
           として計算しています。
         </li>
         <li>σ 範囲は取引回数が多いほど正確になる正規近似です。</li>
+        <li>修繕の付いた装備を身につけていると、経験値オーブが耐久値の回復に使われます。</li>
+      </ul>
+    </section>
+  );
+}
+
+function FurnaceCalculator({ current }: { current: LevelState }) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const startXp = totalXp(current.level, current.percent / 100);
+  const gained = smeltingXp(counts);
+  const result = formatLevel(startXp + gained);
+
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-white/10 bg-black/30 p-5">
+      <header className="flex flex-col gap-1">
+        <h2 className="font-pixel text-xl text-lime-300">経験値かまど計算機</h2>
+        <p className="text-sm text-zinc-400">
+          上の「現在」の状態から、かまどで精錬した完成品を取り出したときにどこまでレベルが上がるかを示します。
+        </p>
+      </header>
+
+      {SMELTING_GROUPS.map((group) => (
+        <details key={group.label} className="group rounded-md border border-white/10 bg-black/20">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+            <span className="text-xs text-lime-400 transition-transform group-open:rotate-90">▶</span>
+            <h3 className="font-pixel text-base text-lime-300">{group.label}</h3>
+            <span className="ml-auto text-xs text-zinc-500 tabular-nums">
+              {fmt(smeltingXp(Object.fromEntries(group.recipes.map((r) => [r.id, counts[r.id] ?? 0]))))} XP
+            </span>
+          </summary>
+          <div className="grid gap-x-6 gap-y-2 border-t border-white/10 px-3 py-3 sm:grid-cols-2">
+            {group.recipes.map((recipe) => {
+              const count = counts[recipe.id] ?? 0;
+              return (
+                <label key={recipe.id} className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 text-sm leading-tight">
+                    {recipe.input}
+                    <span className="block text-xs text-zinc-500">
+                      {recipe.output && `→ ${recipe.output} ・ `}
+                      {(recipe.xpCenti / 100).toLocaleString("ja-JP", { maximumFractionDigits: 2 })}
+                      {count > 0 && <span className="text-zinc-400"> × {count.toLocaleString("ja-JP")} 回</span>}
+                    </span>
+                  </span>
+                  <NumberInput
+                    type="text"
+                    placeholder="0"
+                    value={count}
+                    parse={(t) => clamp(Math.floor(evalProduct(t)), 0, MAX_SMELTS)}
+                    onChange={(n) => setCounts((c) => ({ ...c, [recipe.id]: n }))}
+                    className="w-24 shrink-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-1.5 text-right tabular-nums outline-none focus:border-lime-400"
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </details>
+      ))}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-zinc-500">
+            <tr>
+              <th className="py-1 text-left font-normal"></th>
+              <th className="py-1 text-right font-normal whitespace-nowrap">獲得経験値</th>
+              <th className="py-1 pl-4 text-left font-normal">到達レベル</th>
+              <th className="w-1/3 py-1 font-normal"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t border-white/5 text-[#80ff20]">
+              <td className="py-2 whitespace-nowrap">期待値</td>
+              <td className="py-2 text-right whitespace-nowrap">{fmt(gained)}</td>
+              <td className="py-2 pl-4 whitespace-nowrap">{result.label}</td>
+              <td className="min-w-20 py-2 pl-4">
+                <XpBar level={result.level} percent={result.percent} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="flex-1 text-sm text-zinc-300">
+          獲得経験値: {fmt(gained)}
+        </p>
+        <button
+          type="button"
+          onClick={() => setCounts({})}
+          className="rounded-md border border-white/15 bg-zinc-900 px-3 py-1.5 text-sm hover:border-lime-400"
+        >
+          すべて 0 にする
+        </button>
+      </div>
+
+      <ul className="list-disc pl-5 text-xs leading-relaxed text-zinc-500">
+        <li>
+          完成品を取り出すと、品目ごとに「精錬回数 × 経験値」の整数部を獲得し、小数部はその確率でさらに +1
+          されるため、期待値で示しています。
+        </li>
+        <li>
+          ホッパーで取り出した分の経験値もかまどに蓄積され、プレイヤーが完成品を取り出したときにまとめて得られます。溶鉱炉・燻製器でも同じ値です。
+        </li>
+        <li>Java Edition の値です。統合版ではサボテンが 0.2、シーピクルスが 0.2 になります。</li>
         <li>修繕の付いた装備を身につけていると、経験値オーブが耐久値の回復に使われます。</li>
       </ul>
     </section>

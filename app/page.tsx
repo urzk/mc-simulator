@@ -4,7 +4,7 @@ const tools = [
   {
     href: "/xp-calculator",
     title: "経験値計算機",
-    description: "目標レベルまでに必要な経験値や、村人との取引で上がるレベルを計算します。",
+    description: "目標レベルまでに必要な経験値や、村人との取引・かまどの精錬で上がるレベルを計算します。",
     accent: "text-lime-300 group-hover:text-lime-200",
   },
   {
