@@ -55,7 +55,7 @@ const selectClass =
   "w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 outline-none focus:border-violet-400";
 
 export default function EnchantSimulator() {
-  const [itemId, setItemId] = useState("sword");
+  const [itemId, setItemId] = useState("pickaxe");
   const [materialName, setMaterialName] = useState("ダイヤモンド");
   const [level, setLevel] = useState(30);
   const [filter, setFilter] = useState<EnchantmentId | "">("");

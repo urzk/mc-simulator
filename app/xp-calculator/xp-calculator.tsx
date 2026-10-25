@@ -194,7 +194,7 @@ function formatLevel(xp: number) {
 }
 
 function TradeSimulator({ current }: { current: LevelState }) {
-  const [trades, setTrades] = useState(10);
+  const [trades, setTrades] = useState(12);
   const [levelUps, setLevelUps] = useState(0);
 
   const startXp = totalXp(current.level, current.percent / 100);
