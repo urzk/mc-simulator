@@ -241,6 +241,8 @@ function TradeSimulator({ current }: { current: LevelState }) {
             inputMode="numeric"
             min={0}
             max={trades}
+            placeholder="0"
+            blankZero
             value={effectiveLevelUps}
             parse={(t) => clamp(Math.floor(Number(t)), 0, trades)}
             onChange={setLevelUps}
@@ -343,6 +345,7 @@ function FurnaceCalculator({ current }: { current: LevelState }) {
                   <NumberInput
                     type="text"
                     placeholder="0"
+                    blankZero
                     value={count}
                     parse={(t) => clamp(Math.floor(evalProduct(t)), 0, MAX_SMELTS)}
                     onChange={(n) => setCounts((c) => ({ ...c, [recipe.id]: n }))}
