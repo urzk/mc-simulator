@@ -13,6 +13,12 @@ const tools = [
     description: "エンチャントテーブルで付与されうるエンチャントの組み合わせを出現確率ごとに一覧表示します。",
     accent: "text-violet-300 group-hover:text-violet-200",
   },
+  {
+    href: "/job-xp-calculator",
+    title: "Job経験値計算機",
+    description: "できたてサーバー（猫）の Jobs プラグインで、目標の Job レベルまでに必要な Job 経験値を計算します。",
+    accent: "text-cyan-300 group-hover:text-cyan-200",
+  },
 ];
 
 export default function Home() {
