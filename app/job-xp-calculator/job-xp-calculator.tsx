@@ -85,34 +85,22 @@ function LevelInput({
             type="number"
             inputMode="decimal"
             min={0}
-            max={99.99}
-            step="any"
+            step={0.01}
             disabled={isMax}
-            value={percent}
-            parse={(t) => clamp(Math.round(Number(t) * 100) / 100, 0, 99.99)}
-            onChange={setPercent}
-            className="w-24 rounded-md border border-white/15 bg-zinc-900 py-2 pl-3 pr-6 text-right tabular-nums outline-none focus:border-cyan-400 disabled:opacity-40"
+            aria-label="バー内の経験値"
+            value={xpCenti / 100}
+            parse={(t) => clamp(toCenti(Number(t)), 0, maxBarCenti(value.level)) / 100}
+            onChange={(xp) => onChange({ ...value, xpCenti: toCenti(xp) })}
+            className="w-32 rounded-md border border-white/15 bg-zinc-900 py-2 pl-3 pr-8 text-right tabular-nums outline-none focus:border-cyan-400 disabled:opacity-40"
           />
           <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
-            %
+            xp
           </span>
         </span>
       </label>
-      <label className="flex items-center gap-3">
-        <span className="w-16 shrink-0 text-sm text-zinc-400">経験値</span>
-        <NumberInput
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step={0.01}
-          disabled={isMax}
-          value={xpCenti / 100}
-          parse={(t) => clamp(toCenti(Number(t)), 0, maxBarCenti(value.level)) / 100}
-          onChange={(xp) => onChange({ ...value, xpCenti: toCenti(xp) })}
-          className="w-full min-w-0 rounded-md border border-white/15 bg-zinc-900 px-3 py-2 text-right tabular-nums outline-none focus:border-cyan-400 disabled:opacity-40"
-        />
-        <span className="shrink-0 text-sm text-zinc-500 tabular-nums">/ {jobXpToNextLevel(value.level).toLocaleString("ja-JP")}</span>
-      </label>
+      <p className="-mt-2 text-right text-sm text-zinc-400 tabular-nums">
+        {isMax ? "MAX" : `${percent.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}%`}
+      </p>
       <JobXpBar level={value.level} xpCenti={xpCenti} />
       <p className="text-right text-xs text-zinc-500 tabular-nums">
         累計 {fmtCenti(jobTotalXpCenti(value.level, xpCenti))}
