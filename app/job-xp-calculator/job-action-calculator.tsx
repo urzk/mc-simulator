@@ -305,7 +305,7 @@ export default function JobActionCalculator({
           Lv{current.level} での 1 回あたり
           {bonusPercent > 100 && (
             <span className="ml-2 text-xs text-cyan-300 tabular-nums">
-              職業ボーナス適用×{(bonusPercent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}
+              職業ボーナス適用 ×{(bonusPercent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}
             </span>
           )}
         </p>

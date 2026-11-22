@@ -22,7 +22,7 @@ export default function JobXpCalculatorPage() {
             レベルまでに必要な Job 経験値を計算します。
           </p>
           <p className="rounded-md border border-amber-400/30 bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-200/90">
-            このツールは有志が作成した非公式のものです。できたてサーバー（猫）の公式ツールではありません。計算結果と実際のゲーム内の値が異なる場合があります。運営へのお問い合わせはご遠慮ください。
+            このツールは有志が作成した非公式のものです。できたてサーバー（猫）の公式ツールではありません。鯖運営へのお問い合わせはご遠慮ください。
           </p>
         </header>
 
