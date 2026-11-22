@@ -4,7 +4,8 @@ import JobXpCalculator, { JobLevelTable } from "./job-xp-calculator";
 
 export const metadata: Metadata = {
   title: "Job経験値計算機",
-  description: "できたてサーバー（猫）の Jobs プラグインで、目標の Job レベルまでに必要な Job 経験値を計算します。",
+  description:
+    "できたてサーバー（猫）の Jobs プラグインで、目標の Job レベルまでに必要な Job 経験値や、行動回数・収入を計算します。",
 };
 
 export default function JobXpCalculatorPage() {

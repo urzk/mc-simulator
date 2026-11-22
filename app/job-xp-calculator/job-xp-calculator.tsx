@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import NumberInput from "@/app/components/number-input";
+import JobActionCalculator from "./job-action-calculator";
 import {
   JOB_MAX_LEVEL,
   JOB_MIN_LEVEL,
@@ -193,6 +194,12 @@ export default function JobXpCalculator() {
           </>
         )}
       </section>
+
+      <JobActionCalculator
+        current={{ level: current.level, xpCenti: effectiveXpCenti(current) }}
+        targetTotalCenti={targetCenti}
+        targetLevel={target.level}
+      />
     </div>
   );
 }
