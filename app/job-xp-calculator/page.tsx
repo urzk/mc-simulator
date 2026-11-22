@@ -21,6 +21,9 @@ export default function JobXpCalculatorPage() {
             できたてサーバー（猫）の Jobs プラグインで、現在の Job レベルとバーの貯まり具合から、目標の Job
             レベルまでに必要な Job 経験値を計算します。
           </p>
+          <p className="rounded-md border border-amber-400/30 bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-200/90">
+            このツールは有志が作成した非公式のものです。できたてサーバー（猫）の公式ツールではありません。計算結果と実際のゲーム内の値が異なる場合があります。運営へのお問い合わせはご遠慮ください。
+          </p>
         </header>
 
         <JobXpCalculator />
@@ -28,6 +31,7 @@ export default function JobXpCalculatorPage() {
 
         <footer className="text-xs leading-relaxed text-zinc-500">
           <ul className="list-disc pl-5">
+            <li>本ツールはできたてサーバー（猫）公式のものではなく、有志による非公式のツールです。</li>
             <li>Job 経験値は Jobs プラグインの Job レベルに関わる経験値で、Minecraft の経験値とは別物です。</li>
             <li>Job レベル L から L+1 に上がるのに必要な Job 経験値は L³ です（例: Lv40→41 は 64,000）。</li>
             <li>Job レベルは 1 から始まり、最大は 100 です。Lv100 に到達するとバーは増えなくなります。</li>

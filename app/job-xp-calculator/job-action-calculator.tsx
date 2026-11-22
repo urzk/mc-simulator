@@ -5,12 +5,20 @@ import NumberInput from "@/app/components/number-input";
 import { JOBS, type Job, type JobTarget } from "@/lib/job-actions";
 import {
   baseXpCentiFromIncome,
+  jobBonusPercent,
   jobIncomePerAction,
   jobTotalXpCenti,
   jobXpPerActionMicro,
   MAX_JOB_COUNT,
+  NO_JOB_BONUS,
   planJobActions,
+  type JobBonus,
 } from "@/lib/jobs";
+
+const BONUS_OPTIONS: { key: keyof JobBonus; label: string; note: string }[] = [
+  { key: "saturday", label: "職業ボーナス（土曜）", note: "×1.2" },
+  { key: "vote", label: "職業ボーナス（投票ポイント）", note: "×1.5" },
+];
 
 const ACTION_LABELS: Record<string, string> = {
   Brew: "醸造",
@@ -94,6 +102,8 @@ export default function JobActionCalculator({
   const [baseIncomeCenti, setBaseIncomeCenti] = useState(initialTarget[2]);
   const [baseXpCenti, setBaseXpCenti] = useState(initialTarget[3]);
   const [jobCount, setJobCount] = useState(1);
+  const [bonus, setBonus] = useState<JobBonus>(NO_JOB_BONUS);
+  const bonusPercent = jobBonusPercent(bonus);
 
   const job = findJob(selection.jobId);
   const action = job.actions.find((a) => a.id === selection.actionId) ?? job.actions[0];
@@ -129,9 +139,9 @@ export default function JobActionCalculator({
     }
   };
 
-  const incomeNow = jobIncomePerAction(baseIncomeCenti, current.level, jobCount);
+  const incomeNow = jobIncomePerAction(baseIncomeCenti, current.level, jobCount, bonus);
   const xpNow = jobXpPerActionMicro(baseXpCenti, jobCount) / 10_000;
-  const plan = planJobActions(current, targetTotalCenti, baseIncomeCenti, baseXpCenti, jobCount);
+  const plan = planJobActions(current, targetTotalCenti, baseIncomeCenti, baseXpCenti, jobCount, bonus);
   const reached = targetTotalCenti <= jobTotalXpCenti(current.level, current.xpCenti);
 
   // フィルタで選択中の対象が消えても、セレクトの表示が崩れないよう先頭に残す
@@ -260,18 +270,60 @@ export default function JobActionCalculator({
         </div>
       </div>
 
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-zinc-400">
+          職業ボーナス
+          <span className="ml-2 text-xs text-zinc-500 tabular-nums">
+            収入 ×{(bonusPercent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}（経験値は変わりません）
+          </span>
+        </span>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {BONUS_OPTIONS.map((o) => (
+            <label
+              key={o.key}
+              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+                bonus[o.key]
+                  ? "border-cyan-400 bg-cyan-950/60 text-cyan-200"
+                  : "border-white/15 bg-zinc-900 hover:border-cyan-400"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={bonus[o.key]}
+                onChange={(e) => setBonus((b) => ({ ...b, [o.key]: e.target.checked }))}
+                className="accent-cyan-400"
+              />
+              <span className="flex-1">{o.label}</span>
+              <span className="text-xs text-zinc-500 tabular-nums">{o.note}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div className="rounded-md border border-white/10 bg-black/20 p-4">
-        <p className="text-sm text-zinc-400">Lv{current.level} での 1 回あたり</p>
+        <p className="text-sm text-zinc-400">
+          Lv{current.level} での 1 回あたり
+          {bonusPercent > 100 && (
+            <span className="ml-2 text-xs text-cyan-300 tabular-nums">
+              職業ボーナス適用×{(bonusPercent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}
+            </span>
+          )}
+        </p>
         <dl className="mt-1 grid grid-cols-2 gap-x-4 text-lg tabular-nums">
           <div>
             <dt className="text-xs text-zinc-500">収入</dt>
             <dd>{yen(incomeNow)}</dd>
-            <dd className="text-xs text-zinc-500">{yen(incomeNow, 6)}</dd>
+            <dd className="text-xs text-zinc-500">
+              {incomeNow < 0 ? "-" : ""}¥
+              {Math.abs(incomeNow).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 7 })}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-zinc-500">経験値</dt>
             <dd>{fixed(xpNow, 2)} xp</dd>
-            <dd className="text-xs text-zinc-500">{fixed(xpNow, 6)} xp</dd>
+            <dd className="text-xs text-zinc-500">
+              {xpNow.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} xp
+            </dd>
           </div>
         </dl>
       </div>
@@ -312,7 +364,7 @@ export default function JobActionCalculator({
                       {plan.byLevel.map((r) => (
                         <tr key={r.level} className="border-t border-white/5">
                           <td className="py-1 text-left">Lv{r.level}</td>
-                          <td className="py-1">{yen(jobIncomePerAction(baseIncomeCenti, r.level, jobCount))}</td>
+                          <td className="py-1">{yen(jobIncomePerAction(baseIncomeCenti, r.level, jobCount, bonus))}</td>
                           <td className="py-1">{r.count.toLocaleString("ja-JP")}</td>
                           <td className="py-1">{yen(r.income)}</td>
                         </tr>
@@ -337,7 +389,10 @@ export default function JobActionCalculator({
           基礎収入を書き換えると、基礎経験値は基礎収入の小数第 2 位を切り捨てた値になります（Gourmet
           は収入がなく、経験値だけが設定されています）。
         </li>
-        <li>職業ボーナス・収入上限・端数処理は考慮していません。</li>
+        <li>
+          職業ボーナスは収入にだけ掛かり、土曜で ×1.2、投票ポイントで ×1.5、両方で ×1.7 になります。経験値は変わりません。
+        </li>
+        <li>収入上限・端数処理は考慮していません。</li>
         <li>
           基礎収入の一覧は{" "}
           <a

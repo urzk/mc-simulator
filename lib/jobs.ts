@@ -30,8 +30,18 @@ export function jobTotalXpCenti(level: number, xpCenti: number): number {
 // Job収入 = 基礎収入 × (1 + レベル係数 × 兼業係数)
 // Job経験値 = 基礎経験値 × 兼業係数
 // レベル係数 = (レベル − 1) × 0.01、兼業係数 = 1 − (就業中の Job 数 − 1) × 0.05
+// 職業ボーナスは収入にだけ掛かる（土曜: ×1.2、投票ポイント: ×1.5、両方: ×1.7）
 
 export const MAX_JOB_COUNT = 3;
+
+export type JobBonus = { saturday: boolean; vote: boolean };
+
+export const NO_JOB_BONUS: JobBonus = { saturday: false, vote: false };
+
+/** 職業ボーナスによる収入の倍率を 1/100 単位の整数で返す */
+export function jobBonusPercent(bonus: JobBonus): number {
+  return 100 + (bonus.saturday ? 20 : 0) + (bonus.vote ? 50 : 0);
+}
 
 /** 兼業係数を 1/100 単位の整数で返す (1 Job: 100, 2 Jobs: 95, 3 Jobs: 90) */
 function multiJobPercent(jobCount: number): number {
@@ -39,8 +49,17 @@ function multiJobPercent(jobCount: number): number {
 }
 
 /** 基礎収入 (0.01 単位) から、レベル `level` での 1 回あたりの収入を求める */
-export function jobIncomePerAction(baseIncomeCenti: number, level: number, jobCount: number): number {
-  return (baseIncomeCenti / 100) * (1 + ((level - 1) / 100) * (multiJobPercent(jobCount) / 100));
+export function jobIncomePerAction(
+  baseIncomeCenti: number,
+  level: number,
+  jobCount: number,
+  bonus: JobBonus = NO_JOB_BONUS,
+): number {
+  return (
+    (baseIncomeCenti / 100) *
+    (1 + ((level - 1) / 100) * (multiJobPercent(jobCount) / 100)) *
+    (jobBonusPercent(bonus) / 100)
+  );
 }
 
 /** 基礎経験値 (0.01 単位) から、1 回あたりの経験値を 0.0001 単位の整数で求める */
@@ -81,6 +100,7 @@ export function planJobActions(
   baseIncomeCenti: number,
   baseXpCenti: number,
   jobCount: number,
+  bonus: JobBonus = NO_JOB_BONUS,
 ): ActionPlan | null {
   const step = jobXpPerActionMicro(baseXpCenti, jobCount); // 0.0001 単位
   if (step <= 0) return null;
@@ -98,7 +118,7 @@ export function planJobActions(
     const done = actionsBelow(jobTotalXpForLevel(level) * 10_000);
     const n = actionsBelow(jobTotalXpForLevel(level + 1) * 10_000) - done;
     if (n > 0) {
-      const income = n * jobIncomePerAction(baseIncomeCenti, level, jobCount);
+      const income = n * jobIncomePerAction(baseIncomeCenti, level, jobCount, bonus);
       byLevel.push({ level, count: n, income });
       totalIncome += income;
     }
