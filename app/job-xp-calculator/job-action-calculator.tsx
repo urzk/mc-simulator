@@ -242,7 +242,7 @@ export default function JobActionCalculator({
           <select
             value={action.id}
             onChange={(e) => onActionChange(e.target.value)}
-            disabled={job.actions.length === 1 || unavailable}
+            disabled={unavailable}
             className={`${selectClass} disabled:opacity-60`}
           >
             {job.actions.map((a) => (
@@ -271,7 +271,8 @@ export default function JobActionCalculator({
             value={selectedTarget ? selectedTarget[0] : ""}
             onChange={(e) => select(job.id, action.id, action.targets.find((t) => t[0] === e.target.value))}
             aria-label="対象"
-            className={selectClass}
+            disabled={unavailable}
+            className={`${selectClass} disabled:opacity-60`}
           >
             {!selectedTarget && <option value="">（手入力）</option>}
             {options.map((t) => (
