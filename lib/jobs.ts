@@ -43,6 +43,27 @@ export function jobBonusPercent(bonus: JobBonus): number {
   return 100 + (bonus.saturday ? 20 : 0) + (bonus.vote ? 50 : 0);
 }
 
+// ---- サーバーごとの違い ----
+// Jobs プラグインが入っているのはサバイバルサーバーと資源サーバーだけ。
+// Miner は資源サーバーでのみ、Builder はサバイバルサーバーでのみ有効。
+// Hunter はサバイバルサーバーでは収入が資源サーバーの 60%、経験値が 50% になる。
+// 基礎収入・基礎経験値の一覧は資源サーバーの値。
+
+export type JobServer = "survival" | "resource";
+
+/** サーバーによる補正。収入・経験値とも 1/100 単位の整数 */
+export type JobServerRate = { incomePercent: number; xpPercent: number };
+
+export const FULL_SERVER_RATE: JobServerRate = { incomePercent: 100, xpPercent: 100 };
+
+/** その Job のサーバーでの補正を返す。そのサーバーで無効な Job なら null */
+export function jobServerRate(jobId: string, server: JobServer): JobServerRate | null {
+  if (jobId === "Miner" && server === "survival") return null;
+  if (jobId === "Builder" && server === "resource") return null;
+  if (jobId === "Hunter" && server === "survival") return { incomePercent: 60, xpPercent: 50 };
+  return FULL_SERVER_RATE;
+}
+
 /** 兼業係数を 1/100 単位の整数で返す (1 Job: 100, 2 Jobs: 95, 3 Jobs: 90) */
 function multiJobPercent(jobCount: number): number {
   return 100 - (jobCount - 1) * 5;
@@ -54,17 +75,26 @@ export function jobIncomePerAction(
   level: number,
   jobCount: number,
   bonus: JobBonus = NO_JOB_BONUS,
+  rate: JobServerRate = FULL_SERVER_RATE,
 ): number {
   return (
     (baseIncomeCenti / 100) *
     (1 + ((level - 1) / 100) * (multiJobPercent(jobCount) / 100)) *
-    (jobBonusPercent(bonus) / 100)
+    (jobBonusPercent(bonus) / 100) *
+    (rate.incomePercent / 100)
   );
 }
 
-/** 基礎経験値 (0.01 単位) から、1 回あたりの経験値を 0.0001 単位の整数で求める */
-export function jobXpPerActionMicro(baseXpCenti: number, jobCount: number): number {
-  return baseXpCenti * multiJobPercent(jobCount);
+/** 経験値を誤差なく扱うための単位 (0.000001 xp) */
+export const XP_MICRO = 1_000_000;
+
+/** 基礎経験値 (0.01 単位) から、1 回あたりの経験値を 0.000001 単位の整数で求める */
+export function jobXpPerActionMicro(
+  baseXpCenti: number,
+  jobCount: number,
+  rate: JobServerRate = FULL_SERVER_RATE,
+): number {
+  return baseXpCenti * multiJobPercent(jobCount) * rate.xpPercent;
 }
 
 /** 基礎収入から基礎経験値を求める（小数第 2 位を切り捨てて小数第 1 位までにする）。0.01 単位 */
@@ -101,12 +131,13 @@ export function planJobActions(
   baseXpCenti: number,
   jobCount: number,
   bonus: JobBonus = NO_JOB_BONUS,
+  rate: JobServerRate = FULL_SERVER_RATE,
 ): ActionPlan | null {
-  const step = jobXpPerActionMicro(baseXpCenti, jobCount); // 0.0001 単位
+  const step = jobXpPerActionMicro(baseXpCenti, jobCount, rate); // 0.000001 単位
   if (step <= 0) return null;
 
-  const start = jobTotalXpCenti(current.level, current.xpCenti) * 100;
-  const goal = targetTotalCenti * 100;
+  const start = jobTotalXpCenti(current.level, current.xpCenti) * (XP_MICRO / 100);
+  const goal = targetTotalCenti * (XP_MICRO / 100);
   const count = Math.max(0, ceilDiv(goal - start, step));
 
   // 累計経験値が T 未満の状態で行う行動の回数
@@ -115,10 +146,10 @@ export function planJobActions(
   const byLevel: ActionPlan["byLevel"] = [];
   let totalIncome = 0;
   for (let level = current.level; level < JOB_MAX_LEVEL; level++) {
-    const done = actionsBelow(jobTotalXpForLevel(level) * 10_000);
-    const n = actionsBelow(jobTotalXpForLevel(level + 1) * 10_000) - done;
+    const done = actionsBelow(jobTotalXpForLevel(level) * XP_MICRO);
+    const n = actionsBelow(jobTotalXpForLevel(level + 1) * XP_MICRO) - done;
     if (n > 0) {
-      const income = n * jobIncomePerAction(baseIncomeCenti, level, jobCount, bonus);
+      const income = n * jobIncomePerAction(baseIncomeCenti, level, jobCount, bonus, rate);
       byLevel.push({ level, count: n, income });
       totalIncome += income;
     }

@@ -7,13 +7,31 @@ import {
   baseXpCentiFromIncome,
   jobBonusPercent,
   jobIncomePerAction,
+  jobServerRate,
   jobTotalXpCenti,
   jobXpPerActionMicro,
   MAX_JOB_COUNT,
   NO_JOB_BONUS,
   planJobActions,
+  XP_MICRO,
   type JobBonus,
+  type JobServer,
 } from "@/lib/jobs";
+
+const SERVERS: { id: JobServer; label: string }[] = [
+  { id: "survival", label: "サバイバルサーバー" },
+  { id: "resource", label: "資源サーバー" },
+];
+
+const SERVER_ONLY_NOTE: Record<JobServer, string> = {
+  survival: "資源サーバーのみ",
+  resource: "サバイバルサーバーのみ",
+};
+
+/** 倍率 (1/100 単位) を「×0.6」形式で表示する */
+function rateLabel(percent: number) {
+  return `×${(percent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}`;
+}
 
 const BONUS_OPTIONS: { key: keyof JobBonus; label: string; note: string }[] = [
   { key: "saturday", label: "職業ボーナス（土曜）", note: "×1.2" },
@@ -103,6 +121,7 @@ export default function JobActionCalculator({
   const [baseXpCenti, setBaseXpCenti] = useState(initialTarget[3]);
   const [jobCount, setJobCount] = useState(1);
   const [bonus, setBonus] = useState<JobBonus>(NO_JOB_BONUS);
+  const [server, setServer] = useState<JobServer>("resource");
   const bonusPercent = jobBonusPercent(bonus);
 
   const job = findJob(selection.jobId);
@@ -139,9 +158,15 @@ export default function JobActionCalculator({
     }
   };
 
-  const incomeNow = jobIncomePerAction(baseIncomeCenti, current.level, jobCount, bonus);
-  const xpNow = jobXpPerActionMicro(baseXpCenti, jobCount) / 10_000;
-  const plan = planJobActions(current, targetTotalCenti, baseIncomeCenti, baseXpCenti, jobCount, bonus);
+  // そのサーバーで無効な Job を選んでいるときは、収入も経験値も得られない
+  const serverRate = jobServerRate(job.id, server);
+  const unavailable = serverRate === null;
+  const rate = serverRate ?? { incomePercent: 0, xpPercent: 0 };
+  const reduced = !unavailable && (rate.incomePercent !== 100 || rate.xpPercent !== 100);
+  const unavailableMessage = `${job.id} は${SERVERS.find((x) => x.id === server)?.label}では無効です（${SERVER_ONLY_NOTE[server]}）`;
+  const incomeNow = jobIncomePerAction(baseIncomeCenti, current.level, jobCount, bonus, rate);
+  const xpNow = jobXpPerActionMicro(baseXpCenti, jobCount, rate) / XP_MICRO;
+  const plan = planJobActions(current, targetTotalCenti, baseIncomeCenti, baseXpCenti, jobCount, bonus, rate);
   const reached = targetTotalCenti <= jobTotalXpCenti(current.level, current.xpCenti);
 
   // フィルタで選択中の対象が消えても、セレクトの表示が崩れないよう先頭に残す
@@ -156,13 +181,35 @@ export default function JobActionCalculator({
         </p>
       </header>
 
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-zinc-400">サーバー</span>
+        <div className="grid grid-cols-2 gap-1" role="radiogroup" aria-label="サーバー">
+          {SERVERS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              role="radio"
+              aria-checked={server === s.id}
+              onClick={() => setServer(s.id)}
+              className={`rounded-md border px-2 py-2 text-sm ${
+                server === s.id
+                  ? "border-cyan-400 bg-cyan-950/60 text-cyan-200"
+                  : "border-white/15 bg-zinc-900 hover:border-cyan-400"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className="text-sm text-zinc-400">Job</span>
           <select value={job.id} onChange={(e) => onJobChange(e.target.value)} className={selectClass}>
             {JOBS.map((j) => (
               <option key={j.id} value={j.id}>
-                {j.id}（{j.description}）
+                {j.id}（{j.description}）{jobServerRate(j.id, server) === null && ` ※${SERVER_ONLY_NOTE[server]}`}
               </option>
             ))}
           </select>
@@ -172,7 +219,7 @@ export default function JobActionCalculator({
           <select
             value={action.id}
             onChange={(e) => onActionChange(e.target.value)}
-            disabled={job.actions.length === 1}
+            disabled={job.actions.length === 1 || unavailable}
             className={`${selectClass} disabled:opacity-60`}
           >
             {job.actions.map((a) => (
@@ -304,32 +351,41 @@ export default function JobActionCalculator({
         <p className="text-sm text-zinc-400">
           Lv{current.level} での 1 回あたり
           {bonusPercent > 100 && (
-            <span className="ml-2 text-xs text-cyan-300 tabular-nums">
-              職業ボーナス適用 ×{(bonusPercent / 100).toLocaleString("ja-JP", { minimumFractionDigits: 1 })}
+            <span className="ml-2 text-xs text-cyan-300 tabular-nums">職業ボーナス適用 {rateLabel(bonusPercent)}</span>
+          )}
+          {reduced && (
+            <span className="ml-2 text-xs text-amber-300 tabular-nums">
+              サバイバル補正 収入 {rateLabel(rate.incomePercent)}・経験値 {rateLabel(rate.xpPercent)}
             </span>
           )}
         </p>
-        <dl className="mt-1 grid grid-cols-2 gap-x-4 text-lg tabular-nums">
-          <div>
-            <dt className="text-xs text-zinc-500">収入</dt>
-            <dd>{yen(incomeNow)}</dd>
-            <dd className="text-xs text-zinc-500">
-              {incomeNow < 0 ? "-" : ""}¥
-              {Math.abs(incomeNow).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 7 })}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-500">経験値</dt>
-            <dd>{fixed(xpNow, 2)} xp</dd>
-            <dd className="text-xs text-zinc-500">
-              {xpNow.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} xp
-            </dd>
-          </div>
-        </dl>
+        {unavailable ? (
+          <p className="mt-1 text-sm text-amber-300">{unavailableMessage}</p>
+        ) : (
+          <dl className="mt-1 grid grid-cols-2 gap-x-4 text-lg tabular-nums">
+            <div>
+              <dt className="text-xs text-zinc-500">収入</dt>
+              <dd>{yen(incomeNow)}</dd>
+              <dd className="text-xs text-zinc-500">
+                {incomeNow < 0 ? "-" : ""}¥
+                {Math.abs(incomeNow).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-zinc-500">経験値</dt>
+              <dd>{fixed(xpNow, 2)} xp</dd>
+              <dd className="text-xs text-zinc-500">
+                {xpNow.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} xp
+              </dd>
+            </div>
+          </dl>
+        )}
       </div>
 
       <div className="rounded-lg border-2 border-cyan-500/40 bg-cyan-950/30 p-5" aria-live="polite">
-        {reached ? (
+        {unavailable ? (
+          <p className="text-sm text-zinc-300">{unavailableMessage}。この Job では目標に到達できません</p>
+        ) : reached ? (
           <p className="text-sm text-zinc-300">目標にはすでに到達しています</p>
         ) : plan === null ? (
           <p className="text-sm text-zinc-300">この行動では Job 経験値が増えないため、目標に到達できません</p>
@@ -364,7 +420,7 @@ export default function JobActionCalculator({
                       {plan.byLevel.map((r) => (
                         <tr key={r.level} className="border-t border-white/5">
                           <td className="py-1 text-left">Lv{r.level}</td>
-                          <td className="py-1">{yen(jobIncomePerAction(baseIncomeCenti, r.level, jobCount, bonus))}</td>
+                          <td className="py-1">{yen(jobIncomePerAction(baseIncomeCenti, r.level, jobCount, bonus, rate))}</td>
                           <td className="py-1">{r.count.toLocaleString("ja-JP")}</td>
                           <td className="py-1">{yen(r.income)}</td>
                         </tr>
@@ -392,6 +448,11 @@ export default function JobActionCalculator({
         <li>
           職業ボーナスは収入にだけ掛かり、土曜で ×1.2、投票ポイントで ×1.5、両方で ×1.7 になります。経験値は変わりません。
         </li>
+        <li>
+          Jobs プラグインが入っているのはサバイバルサーバーと資源サーバーだけです。Miner は資源サーバーでのみ、Builder
+          はサバイバルサーバーでのみ有効です。Hunter はサバイバルサーバーでは収入が資源サーバーの 60%、経験値が 50%
+          になります。それ以外の Job は両サーバーで同じです。
+        </li>
         <li>収入上限・端数処理は考慮していません。</li>
         <li>
           基礎収入の一覧は{" "}
@@ -403,7 +464,7 @@ export default function JobActionCalculator({
           >
             公開スプレッドシート
           </a>{" "}
-          の値（2026年11月時点）です。
+          の値（2026年11月時点・資源サーバー）です。
         </li>
       </ul>
     </section>
