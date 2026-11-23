@@ -117,7 +117,7 @@ export default function JobActionCalculator({
 }) {
   const initialJob = findJob("Miner");
   const initialAction = initialJob.actions.find((a) => a.id === "Break") ?? initialJob.actions[0];
-  const initialTarget = initialAction.targets[0];
+  const initialTarget = initialAction.targets.find((t) => t[0] === "deepslate") ?? initialAction.targets[0];
 
   const [selection, setSelection] = useState<Selection>({
     jobId: initialJob.id,
