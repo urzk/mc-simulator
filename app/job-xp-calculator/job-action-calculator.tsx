@@ -198,9 +198,9 @@ export default function JobActionCalculator({
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-white/10 bg-black/30 p-5">
       <header className="flex flex-col gap-1">
-        <h2 className="font-pixel text-xl text-cyan-300">行動回数・収入計算機</h2>
+        <h2 className="font-pixel text-xl text-cyan-300">収入・経験値・行動回数計算機</h2>
         <p className="text-sm text-zinc-400">
-          上の「現在」から「目標」まで、同じ行動（ブロックの破壊やクラフトなど）を何回繰り返せば到達できるか、その間にどれだけ収入が得られるかを計算します。
+          上の「現在」のレベルで行動（ブロックの破壊やクラフトなど）を 1 回したときに得られる収入と経験値を計算します。また、「目標」まで同じ行動を何回繰り返せば到達できるか、その間にどれだけ収入が得られるかも計算します。
         </p>
       </header>
 

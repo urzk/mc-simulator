@@ -17,7 +17,7 @@ const tools = [
     href: "/job-xp-calculator",
     title: "Job経験値計算機",
     description:
-      "できたてサーバー（猫）の Jobs プラグインで、目標の Job レベルまでに必要な Job 経験値や、行動回数・収入を計算します。",
+      "できたてサーバー（猫）の Jobs プラグインで、目標の Job レベルまでに必要な Job 経験値や、行動ごとの収入・経験値・行動回数を計算します。",
     accent: "text-cyan-300 group-hover:text-cyan-200",
   },
 ];
