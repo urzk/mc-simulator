@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import NumberInput from "@/app/components/number-input";
-import { JOBS, type Job, type JobTarget } from "@/lib/job-actions";
+import { JOBS as RAW_JOBS, type Job, type JobTarget } from "@/lib/job-actions";
 import {
   baseXpCentiFromIncome,
   jobBonusPercent,
@@ -17,6 +17,14 @@ import {
   type JobBonus,
   type JobServer,
 } from "@/lib/jobs";
+
+/** 行動と対象の選択肢は、どちらも ID の ABC 順に並べる */
+const JOBS: Job[] = RAW_JOBS.map((j) => ({
+  ...j,
+  actions: [...j.actions]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((a) => ({ ...a, targets: [...a.targets].sort((x, y) => x[0].localeCompare(y[0])) })),
+}));
 
 const SERVERS: { id: JobServer; label: string }[] = [
   { id: "survival", label: "サバイバルサーバー" },
