@@ -18,12 +18,27 @@ import {
   type JobServer,
 } from "@/lib/jobs";
 
-/** 行動と対象の選択肢は、どちらも ID の ABC 順に並べる */
+/**
+ * 対象の並び順のグループ。Weaponsmith のクラフトだけは
+ * 「鍛冶型以外」→「鍛冶型（ネザライト強化）」→「その他の鍛冶型」の順にする
+ */
+function targetGroup(jobId: string, actionId: string, targetId: string) {
+  if (jobId !== "Weaponsmith" || actionId !== "Craft") return 0;
+  if (targetId === "netherite_upgrade_smithing_template") return 1;
+  return targetId.endsWith("_smithing_template") ? 2 : 0;
+}
+
+/** 行動と対象の選択肢は、原則どちらも ID の ABC 順に並べる */
 const JOBS: Job[] = RAW_JOBS.map((j) => ({
   ...j,
   actions: [...j.actions]
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((a) => ({ ...a, targets: [...a.targets].sort((x, y) => x[0].localeCompare(y[0])) })),
+    .map((a) => ({
+      ...a,
+      targets: [...a.targets].sort(
+        (x, y) => targetGroup(j.id, a.id, x[0]) - targetGroup(j.id, a.id, y[0]) || x[0].localeCompare(y[0]),
+      ),
+    })),
 }));
 
 const SERVERS: { id: JobServer; label: string }[] = [
@@ -460,6 +475,9 @@ export default function JobActionCalculator({
           Jobs プラグインが入っているのはサバイバルサーバーと資源サーバーだけです。Miner は資源サーバーでのみ、Builder
           はサバイバルサーバーでのみ有効です。Hunter はサバイバルサーバーでは収入が資源サーバーの 60%、経験値が 50%
           になります。それ以外の Job は両サーバーで同じです。
+        </li>
+        <li>
+          Farmer のムーシュルームの搾乳は、調整のため現在は収入・経験値とも一時的に削除されているので、一覧から除いています（スプレッドシートには残っています）。
         </li>
         <li>収入上限・端数処理は考慮していません。</li>
         <li>

@@ -1,5 +1,6 @@
 // できたてサーバー（猫）の Jobs の収入対象一覧。scripts で公開スプレッドシートから生成したデータ
 // https://docs.google.com/spreadsheets/d/1NsyXRFSwXFQJ6CPhhMoiNMYliZ9AURTpLzBTq5S1gpI/
+// Farmer のムーシュルームの搾乳は、現在サーバー側で収入・経験値とも一時的に削除されているため除いている
 // targets: [ID, 表示名, 基礎収入 (0.01 単位), 基礎経験値 (0.01 単位)]
 
 export type JobTarget = [id: string, name: string, incomeCenti: number, xpCenti: number];
@@ -982,7 +983,7 @@ export const JOBS: Job[] = [{"id":"Brewer","description":"ポーションの醸�
 ["bee","ミツバチ",250,250],
 ["fox","キツネ",250,250],
 ["armadillo","アルマジロ",250,250]]},{"id":"Shear","targets":[["color-all","ヒツジ（全色）",173,170]]},{"id":"Milk","targets":[["cow","ウシ",611,610],
-["mooshroom","ムーシュルーム",611,610],
+
 ["goat","ヤギ",611,610]]},{"id":"Kill","targets":[["cow","ウシ",260,260],
 ["pig","ブタ",260,260],
 ["sheep","ヒツジ",208,200],
